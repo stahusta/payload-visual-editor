@@ -192,3 +192,5 @@ export const VisualEditorProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   return <>{children}</>
 }
+
+export default VisualEditorProvider
