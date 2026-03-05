@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { MESSAGE_TYPE, OPTIONS_ATTR, COLLECTION_ATTR } from '../constants.js'
-import type { VisualEditorMessage } from '../types.js'
+import { POPOVER_WIDTH, VIEWPORT_PADDING } from '../constants.js'
+import { sendToParent } from '../helpers/index.js'
 
 interface PopoverOption {
   label: string
@@ -39,22 +39,17 @@ export const ContextPopover: React.FC<ContextPopoverProps> = ({
     }
   }, [])
 
-  const send = (msg: Omit<VisualEditorMessage, 'type'>) => {
-    window.parent.postMessage({ type: MESSAGE_TYPE, ...msg }, '*')
-  }
-
   // Calculate popover position (below element, centered, clamped to viewport)
-  const popoverWidth = 240
-  const popoverTop = rect.bottom + 8
+  const popoverTop = rect.bottom + VIEWPORT_PADDING
   const popoverLeft = Math.min(
-    Math.max(8, rect.left + rect.width / 2 - popoverWidth / 2),
-    (typeof window !== 'undefined' ? window.innerWidth : 1024) - popoverWidth - 8,
+    Math.max(VIEWPORT_PADDING, rect.left + rect.width / 2 - POPOVER_WIDTH / 2),
+    (typeof window !== 'undefined' ? window.innerWidth : 1024) - POPOVER_WIDTH - VIEWPORT_PADDING,
   )
 
   // --- SELECT ---
   const handleSelectChange = (value: string) => {
     setSelectedValue(value)
-    send({ action: 'UPDATE_SELECT', fieldPath, value })
+    sendToParent({ action: 'UPDATE_SELECT', fieldPath, value })
     onClose()
   }
 
@@ -64,7 +59,7 @@ export const ContextPopover: React.FC<ContextPopoverProps> = ({
       const reader = new FileReader()
       reader.onload = () => {
         const base64 = (reader.result as string).split(',')[1]
-        send({
+        sendToParent({
           action: 'REPLACE_IMAGE',
           fieldPath,
           file: base64,
@@ -73,6 +68,7 @@ export const ContextPopover: React.FC<ContextPopoverProps> = ({
         })
         onClose()
       }
+      reader.onerror = () => onClose()
       reader.readAsDataURL(file)
     },
     [fieldPath, onClose],
@@ -91,7 +87,7 @@ export const ContextPopover: React.FC<ContextPopoverProps> = ({
 
   // --- CHECKBOX ---
   const handleToggle = () => {
-    send({ action: 'TOGGLE_CHECKBOX', fieldPath })
+    sendToParent({ action: 'TOGGLE_CHECKBOX', fieldPath })
     onClose()
   }
 

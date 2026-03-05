@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { MESSAGE_TYPE, BLOCK_LABEL_MAP } from '../constants.js'
-import type { BlockTypeInfo, VisualEditorMessage } from '../types.js'
+import { BLOCK_LABEL_MAP, DEBOUNCE_DELAY, DELETE_CONFIRM_TIMEOUT, VIEWPORT_PADDING } from '../constants.js'
+import { sendToParent } from '../helpers/index.js'
+import type { BlockTypeInfo } from '../types.js'
 
 interface BlockToolbarProps {
   blockIndex: number
@@ -24,22 +25,18 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
   const busyRef = useRef(false)
   const label = BLOCK_LABEL_MAP[blockType] || blockType
 
-  const send = (msg: Omit<VisualEditorMessage, 'type'>) => {
-    window.parent.postMessage({ type: MESSAGE_TYPE, ...msg }, '*')
-  }
-
-  // Guard against rapid-fire clicks (debounce 400ms)
+  // Guard against rapid-fire clicks
   const guarded = (fn: () => void) => {
     if (busyRef.current) return
     busyRef.current = true
     fn()
-    setTimeout(() => { busyRef.current = false }, 400)
+    setTimeout(() => { busyRef.current = false }, DEBOUNCE_DELAY)
   }
 
   const handleMoveUp = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (blockIndex > 0) guarded(() => {
-      send({ action: 'MOVE_BLOCK', blockIndex, moveDirection: 'up' })
+      sendToParent({ action: 'MOVE_BLOCK', blockIndex, moveDirection: 'up' })
       onAction?.()
     })
   }
@@ -47,7 +44,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
   const handleMoveDown = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (blockIndex < totalBlocks - 1) guarded(() => {
-      send({ action: 'MOVE_BLOCK', blockIndex, moveDirection: 'down' })
+      sendToParent({ action: 'MOVE_BLOCK', blockIndex, moveDirection: 'down' })
       onAction?.()
     })
   }
@@ -55,7 +52,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
   const handleDuplicate = (e: React.MouseEvent) => {
     e.stopPropagation()
     guarded(() => {
-      send({ action: 'DUPLICATE_BLOCK', blockIndex })
+      sendToParent({ action: 'DUPLICATE_BLOCK', blockIndex })
       onAction?.()
     })
   }
@@ -63,12 +60,12 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (showConfirmDelete) {
-      send({ action: 'DELETE_BLOCK', blockIndex })
+      sendToParent({ action: 'DELETE_BLOCK', blockIndex })
       setShowConfirmDelete(false)
       onAction?.()
     } else {
       setShowConfirmDelete(true)
-      setTimeout(() => setShowConfirmDelete(false), 3000)
+      setTimeout(() => setShowConfirmDelete(false), DELETE_CONFIRM_TIMEOUT)
     }
   }
 
@@ -201,11 +198,11 @@ export const BlockPicker: React.FC<BlockPickerProps> = ({
       const vw = window.innerWidth
       let top = position.top
       let left = position.left
-      if (top + rect.height > vh - 8) {
-        top = Math.max(8, vh - rect.height - 8)
+      if (top + rect.height > vh - VIEWPORT_PADDING) {
+        top = Math.max(VIEWPORT_PADDING, vh - rect.height - VIEWPORT_PADDING)
       }
-      if (left + rect.width > vw - 8) {
-        left = Math.max(8, vw - rect.width - 8)
+      if (left + rect.width > vw - VIEWPORT_PADDING) {
+        left = Math.max(VIEWPORT_PADDING, vw - rect.width - VIEWPORT_PADDING)
       }
       if (top !== position.top || left !== position.left) {
         setClampedPos({ top, left })

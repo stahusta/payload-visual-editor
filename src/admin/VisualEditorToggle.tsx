@@ -1,6 +1,6 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
-import { MESSAGE_TYPE, RESPONSE_TYPE } from '../constants.js'
+import { MESSAGE_TYPE, RESPONSE_TYPE, IFRAME_READY_DELAY } from '../constants.js'
 import type { VisualEditorMessage, VisualEditorResponse } from '../types.js'
 
 const STORAGE_KEY = 'payload-ve-enabled'
@@ -51,6 +51,7 @@ const VisualEditorToggle: React.FC = () => {
     sendMode(isEnabled)
     const t1 = setTimeout(() => sendMode(isEnabled), 500)
     const t2 = setTimeout(() => sendMode(isEnabled), 1500)
+    // Note: retries needed because iframe loads asynchronously
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [sendMode])
 
@@ -63,7 +64,7 @@ const VisualEditorToggle: React.FC = () => {
         const stored = localStorage.getItem(STORAGE_KEY)
         const isEnabled = stored === null ? true : stored === 'true'
         // Small delay to ensure iframe listener is ready
-        setTimeout(() => sendMode(isEnabled), 100)
+        setTimeout(() => sendMode(isEnabled), IFRAME_READY_DELAY)
       }
     }
     window.addEventListener('message', handleMessage)

@@ -104,26 +104,6 @@ const VisualEditorFormBridge: React.FC = () => {
       })
     }
 
-    // Fallback: hardcoded from our config (we know our blocks)
-    if (blockTypes.length === 0) {
-      const knownBlocks = [
-        { slug: 'cta', label: 'Call to Action' },
-        { slug: 'content', label: 'Content' },
-        { slug: 'mediaBlock', label: 'Media Block' },
-        { slug: 'archive', label: 'Archive' },
-        { slug: 'formBlock', label: 'Form' },
-        { slug: 'portfolioHero', label: 'Portfolio Hero' },
-        { slug: 'services', label: 'Services' },
-        { slug: 'projectGrid', label: 'Project Grid' },
-        { slug: 'stats', label: 'Stats' },
-        { slug: 'testimonials', label: 'Testimonials' },
-        { slug: 'pageHeader', label: 'Page Header' },
-        { slug: 'caseStudyList', label: 'Case Study List' },
-        { slug: 'contactInfo', label: 'Contact Info' },
-      ]
-      blockTypes.push(...knownBlocks)
-    }
-
     sendToIframe({
       type: RESPONSE_TYPE,
       action: 'BLOCK_TYPES',
@@ -184,7 +164,8 @@ const VisualEditorFormBridge: React.FC = () => {
         const formData = new FormData()
         formData.append('file', blob, fileName)
 
-        const res = await fetch('/api/media', {
+        const collection = 'media'
+        const res = await fetch(`/api/${collection}`, {
           method: 'POST',
           body: formData,
           credentials: 'include',
@@ -223,7 +204,6 @@ const VisualEditorFormBridge: React.FC = () => {
           })
         }
       } catch (err) {
-        console.error('[Visual Editor] Image upload failed:', err)
         sendToIframe({
           type: RESPONSE_TYPE,
           action: 'IMAGE_REPLACED',
@@ -275,7 +255,6 @@ const VisualEditorFormBridge: React.FC = () => {
       }
 
       if (!editorEl) {
-        console.warn('[Visual Editor] Could not find Lexical editor for', fieldPath)
         sendToIframe({ type: RESPONSE_TYPE, action: 'RICHTEXT_UPDATED', fieldPath, success: false })
         return
       }

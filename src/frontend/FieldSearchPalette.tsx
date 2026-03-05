@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
-import { FIELD_ATTR, EDIT_ATTR, BLOCK_ATTR } from '../constants.js'
+import { FIELD_ATTR, EDIT_ATTR, BLOCK_ATTR, PREVIEW_MAX_LENGTH } from '../constants.js'
 
 interface SearchableField {
   fieldPath: string
@@ -42,7 +42,7 @@ export const FieldSearchPalette: React.FC<FieldSearchPaletteProps> = ({ onSelect
       const blockFieldPath = blockEl?.getAttribute(FIELD_ATTR)
       const blockIndex = blockFieldPath ? parseInt(blockFieldPath.split('.')[1], 10) : undefined
 
-      const preview = el.textContent?.trim().slice(0, 80) || ''
+      const preview = el.textContent?.trim().slice(0, PREVIEW_MAX_LENGTH) || ''
 
       scanned.push({
         fieldPath,

@@ -1,7 +1,8 @@
 'use client'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { FIELD_ATTR, EDIT_ATTR, BLOCK_ATTR, OPTIONS_ATTR, MESSAGE_TYPE, RESPONSE_TYPE, SORTABLE_PATH_ATTR, SORTABLE_INDEX_ATTR, BLOCK_LABEL_MAP } from '../constants.js'
-import type { BlockTypeInfo, VisualEditorMessage, VisualEditorResponse } from '../types.js'
+import { FIELD_ATTR, EDIT_ATTR, BLOCK_ATTR, OPTIONS_ATTR, RESPONSE_TYPE, SORTABLE_PATH_ATTR, SORTABLE_INDEX_ATTR, BLOCK_LABEL_MAP, STORAGE_POLL_INTERVAL, EDIT_FLASH_DURATION, FIELD_HIGHLIGHT_DURATION } from '../constants.js'
+import { sendToParent } from '../helpers/index.js'
+import type { BlockTypeInfo, VisualEditorResponse } from '../types.js'
 import { BlockToolbar, BlockPicker } from './BlockToolbar.js'
 import { ContextPopover } from './ContextPopover.js'
 import { FieldSearchPalette } from './FieldSearchPalette.js'
@@ -134,17 +135,14 @@ export const VisualEditorOverlay: React.FC = () => {
       const stored = localStorage.getItem('payload-ve-enabled')
       const shouldBeEnabled = stored === null ? true : stored === 'true'
       setIsEnabled(shouldBeEnabled)
-    }, 500)
+    }, STORAGE_POLL_INTERVAL)
     return () => clearInterval(interval)
   }, [])
 
   // Send ready signal
   useEffect(() => {
     if (!isInIframe) return
-    window.parent.postMessage(
-      { type: MESSAGE_TYPE, action: 'EDITOR_READY' } satisfies VisualEditorMessage,
-      '*',
-    )
+    sendToParent({ action: 'EDITOR_READY' })
   }, [isInIframe])
 
   // Listen for responses from admin
@@ -192,15 +190,7 @@ export const VisualEditorOverlay: React.FC = () => {
     element.contentEditable = 'false'
     element.classList.remove('payload-ve--editing')
 
-    window.parent.postMessage(
-      {
-        type: MESSAGE_TYPE,
-        action: 'UPDATE_RICHTEXT',
-        fieldPath,
-        htmlValue: html,
-      } satisfies VisualEditorMessage,
-      '*',
-    )
+    sendToParent({ action: 'UPDATE_RICHTEXT', fieldPath, htmlValue: html })
 
     setActiveRichText(null)
     setActiveEdit(null)
@@ -396,16 +386,7 @@ export const VisualEditorOverlay: React.FC = () => {
         const blockFieldPath2 = blockWrapper?.getAttribute(FIELD_ATTR)
         const blockIndex = blockFieldPath2 ? parseInt(blockFieldPath2.split('.')[1], 10) : undefined
 
-        window.parent.postMessage(
-          {
-            type: MESSAGE_TYPE,
-            action: 'FOCUS_FIELD',
-            fieldPath,
-            blockType,
-            blockIndex,
-          } satisfies VisualEditorMessage,
-          '*',
-        )
+        sendToParent({ action: 'FOCUS_FIELD', fieldPath, blockType, blockIndex })
         return
       }
 
@@ -415,22 +396,13 @@ export const VisualEditorOverlay: React.FC = () => {
 
       // Visual flash feedback on the clicked element
       target.classList.add('payload-ve--editing')
-      setTimeout(() => target.classList.remove('payload-ve--editing'), 800)
+      setTimeout(() => target.classList.remove('payload-ve--editing'), EDIT_FLASH_DURATION)
 
       const blockType = blockWrapper?.getAttribute(BLOCK_ATTR) ?? undefined
       const blockFieldPath2 = blockWrapper?.getAttribute(FIELD_ATTR)
       const blockIndex = blockFieldPath2 ? parseInt(blockFieldPath2.split('.')[1], 10) : undefined
 
-      window.parent.postMessage(
-        {
-          type: MESSAGE_TYPE,
-          action: 'FOCUS_FIELD',
-          fieldPath,
-          blockType,
-          blockIndex,
-        } satisfies VisualEditorMessage,
-        '*',
-      )
+      sendToParent({ action: 'FOCUS_FIELD', fieldPath, blockType, blockIndex })
     },
     [isEnabled, isInIframe, activeRichText, saveRichText],
   )
@@ -481,16 +453,7 @@ export const VisualEditorOverlay: React.FC = () => {
         target.classList.remove('payload-ve--editing')
         setActiveEdit(null)
 
-        window.parent.postMessage(
-          {
-            type: MESSAGE_TYPE,
-            action: 'UPDATE_FIELD',
-            fieldPath,
-            value: editableTarget.innerText,
-            fieldType: editType as 'text' | 'textarea',
-          } satisfies VisualEditorMessage,
-          '*',
-        )
+        sendToParent({ action: 'UPDATE_FIELD', fieldPath, value: editableTarget.innerText, fieldType: editType as 'text' | 'textarea' })
 
         editableTarget.removeEventListener('blur', handleBlur)
         editableTarget.removeEventListener('keydown', handleKeydown)
@@ -571,15 +534,7 @@ export const VisualEditorOverlay: React.FC = () => {
         // Move one step at a time to match Payload's moveFieldRow behavior
         const steps = Math.abs(overIndex - fromIndex)
         for (let i = 0; i < steps; i++) {
-          window.parent.postMessage(
-            {
-              type: MESSAGE_TYPE,
-              action: 'MOVE_BLOCK',
-              blockIndex: direction === 'down' ? fromIndex + i : fromIndex - i,
-              moveDirection: direction,
-            } satisfies VisualEditorMessage,
-            '*',
-          )
+          sendToParent({ action: 'MOVE_BLOCK', blockIndex: direction === 'down' ? fromIndex + i : fromIndex - i, moveDirection: direction })
         }
       }
 
@@ -687,41 +642,18 @@ export const VisualEditorOverlay: React.FC = () => {
       // Ctrl+D: duplicate block
       if (isMod && e.key === 'd') {
         e.preventDefault()
-        window.parent.postMessage(
-          {
-            type: MESSAGE_TYPE,
-            action: 'DUPLICATE_BLOCK',
-            blockIndex: targetBlock.blockIndex,
-          } satisfies VisualEditorMessage,
-          '*',
-        )
+        sendToParent({ action: 'DUPLICATE_BLOCK', blockIndex: targetBlock.blockIndex })
       }
 
       // Ctrl+Up/Down: move block
       if (isMod && e.key === 'ArrowUp') {
         e.preventDefault()
-        window.parent.postMessage(
-          {
-            type: MESSAGE_TYPE,
-            action: 'MOVE_BLOCK',
-            blockIndex: targetBlock.blockIndex,
-            moveDirection: 'up',
-          } satisfies VisualEditorMessage,
-          '*',
-        )
+        sendToParent({ action: 'MOVE_BLOCK', blockIndex: targetBlock.blockIndex, moveDirection: 'up' })
       }
 
       if (isMod && e.key === 'ArrowDown') {
         e.preventDefault()
-        window.parent.postMessage(
-          {
-            type: MESSAGE_TYPE,
-            action: 'MOVE_BLOCK',
-            blockIndex: targetBlock.blockIndex,
-            moveDirection: 'down',
-          } satisfies VisualEditorMessage,
-          '*',
-        )
+        sendToParent({ action: 'MOVE_BLOCK', blockIndex: targetBlock.blockIndex, moveDirection: 'down' })
       }
 
       // Delete/Backspace: delete block (with no active input)
@@ -731,14 +663,7 @@ export const VisualEditorOverlay: React.FC = () => {
           return
         }
         e.preventDefault()
-        window.parent.postMessage(
-          {
-            type: MESSAGE_TYPE,
-            action: 'DELETE_BLOCK',
-            blockIndex: targetBlock.blockIndex,
-          } satisfies VisualEditorMessage,
-          '*',
-        )
+        sendToParent({ action: 'DELETE_BLOCK', blockIndex: targetBlock.blockIndex })
       }
     },
     [isEnabled, isInIframe, activeEdit, activeRichText, saveRichText, hoveredBlock, hoveredField, selectedBlock, popover, blockPicker, showSearch, showShortcuts],
@@ -748,10 +673,7 @@ export const VisualEditorOverlay: React.FC = () => {
   const handleRequestAdd = useCallback(
     (insertIndex: number) => {
       // Request available block types from admin
-      window.parent.postMessage(
-        { type: MESSAGE_TYPE, action: 'GET_BLOCK_TYPES' } satisfies VisualEditorMessage,
-        '*',
-      )
+      sendToParent({ action: 'GET_BLOCK_TYPES' })
 
       const targetBlock = selectedBlock || hoveredBlock
       const targetRect = targetBlock?.rect
@@ -770,15 +692,7 @@ export const VisualEditorOverlay: React.FC = () => {
   const handleBlockPickerSelect = useCallback(
     (blockType: string) => {
       if (!blockPicker) return
-      window.parent.postMessage(
-        {
-          type: MESSAGE_TYPE,
-          action: 'ADD_BLOCK',
-          blockType,
-          insertIndex: blockPicker.insertIndex,
-        } satisfies VisualEditorMessage,
-        '*',
-      )
+      sendToParent({ action: 'ADD_BLOCK', blockType, insertIndex: blockPicker.insertIndex })
       setBlockPicker(null)
     },
     [blockPicker],
@@ -868,16 +782,7 @@ export const VisualEditorOverlay: React.FC = () => {
   const handleArrayItemMove = useCallback(
     (arrayPath: string, fromIndex: number, direction: 'up' | 'down') => {
       const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1
-      window.parent.postMessage(
-        {
-          type: MESSAGE_TYPE,
-          action: 'MOVE_ARRAY_ITEM',
-          arrayPath,
-          moveFromIndex: fromIndex,
-          moveToIndex: toIndex,
-        } satisfies VisualEditorMessage,
-        '*',
-      )
+      sendToParent({ action: 'MOVE_ARRAY_ITEM', arrayPath, moveFromIndex: fromIndex, moveToIndex: toIndex })
       // Clear immediately - DOM will change
       setHoveredArrayItem(null)
     },
@@ -1055,18 +960,8 @@ export const VisualEditorOverlay: React.FC = () => {
             field.element.scrollIntoView({ behavior: 'smooth', block: 'center' })
             // Briefly highlight it
             field.element.classList.add('payload-ve--editing')
-            setTimeout(() => field.element.classList.remove('payload-ve--editing'), 1500)
-            // Focus in admin
-            window.parent.postMessage(
-              {
-                type: MESSAGE_TYPE,
-                action: 'FOCUS_FIELD',
-                fieldPath: field.fieldPath,
-                blockType: field.blockType,
-                blockIndex: field.blockIndex,
-              } satisfies VisualEditorMessage,
-              '*',
-            )
+            setTimeout(() => field.element.classList.remove('payload-ve--editing'), FIELD_HIGHLIGHT_DURATION)
+            sendToParent({ action: 'FOCUS_FIELD', fieldPath: field.fieldPath, blockType: field.blockType, blockIndex: field.blockIndex })
           }}
         />
       )}

@@ -1,5 +1,13 @@
-import { FIELD_ATTR, EDIT_ATTR, BLOCK_ATTR, OPTIONS_ATTR, COLLECTION_ATTR, SORTABLE_PATH_ATTR, SORTABLE_INDEX_ATTR } from '../constants.js'
-import type { EditableFieldType } from '../types.js'
+import { FIELD_ATTR, EDIT_ATTR, BLOCK_ATTR, OPTIONS_ATTR, COLLECTION_ATTR, SORTABLE_PATH_ATTR, SORTABLE_INDEX_ATTR, MESSAGE_TYPE } from '../constants.js'
+import type { EditableFieldType, VisualEditorMessage } from '../types.js'
+
+/**
+ * Send a message from the frontend overlay to the admin panel.
+ * Wrapper around postMessage with proper typing and origin.
+ */
+export const sendToParent = (msg: Omit<VisualEditorMessage, 'type'>) => {
+  window.parent.postMessage({ type: MESSAGE_TYPE, ...msg } satisfies VisualEditorMessage, '*')
+}
 
 /**
  * Creates a field path helper scoped to a specific block.
